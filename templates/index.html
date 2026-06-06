@@ -538,32 +538,72 @@
 
     /* ═══ MANAGE TAB ═════════════════════════════════════════════════════════ */
     .manage-page {
-      padding: 1.75rem 1.25rem 4rem;
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; align-items: start;
+      padding: 2.5rem 2.5rem 4rem;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; align-items: start;
     }
+    .manage-col {
+      padding: 0 3rem 0 0;
+      border-right: 1px solid var(--border);
+    }
+    .manage-col:last-child { border-right: none; padding: 0 0 0 3rem; }
+    .manage-col:not(:first-child):not(:last-child) { padding: 0 3rem; }
     .msection {
-      background: var(--card); border: 1.5px solid var(--border);
-      border-radius: 13px; padding: 1.25rem 1.4rem;
+      background: transparent; border: none; border-radius: 0; padding: 0;
     }
+    .msection + .msection { margin-top: 2.5rem; }
     .msection h2 {
-      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.11em; color: #aaa;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0;
     }
-    .mlist { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem; }
+    .mlist { display: flex; flex-direction: column; gap: 0; margin-bottom: 0; }
     .mrow {
       display: flex; align-items: center; gap: 0.55rem;
-      padding: 0.5rem 0.7rem; border: 1px solid #eeece8; border-radius: 8px; background: #fafaf8;
+      padding: 0.68rem 0;
+      border-bottom: 1px solid var(--border);
+      background: transparent; border-radius: 0;
+      transition: background 0.1s;
     }
-    .mrow .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-    .mrow-label { flex: 1; font-size: 0.9rem; font-weight: 500; }
-    .mrow-meta  { font-size: 0.73rem; color: var(--muted); }
-    .mrow-actions { display: flex; gap: 0.3rem; }
+    .mrow:hover { background: #f5f4f0; margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+    .mrow .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .mrow-label { flex: 1; font-size: 0.875rem; font-weight: 500; min-width: 0; }
+    .mrow-right { display: flex; align-items: center; flex-shrink: 0; width: 11.5rem; justify-content: space-between; }
+    .mrow-meta  { font-size: 0.72rem; color: var(--muted); white-space: nowrap; text-align: right; order: 2; flex-shrink: 0; }
+    .mrow-actions { display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.12s; flex-shrink: 0; order: 1; justify-content: flex-start; }
+    .mrow:hover .mrow-actions { opacity: 1; }
     .mrow-editform { display: none; flex: 1; gap: 0.35rem; align-items: center; }
     .mrow-editform input {
       flex: 1; padding: 0.28rem 0.5rem; border: 1px solid #ddd; border-radius: 6px;
       font-size: 0.86rem; background: #fff; outline: none;
     }
     .mrow-editform input:focus { border-color: #4a90e2; }
+    .manage-page hr.div { display: none; }
+    .manage-page .add-row {
+      padding-top: 0.2rem;
+    }
+    .manage-page .add-row input {
+      background: transparent; border: none; border-bottom: 1.5px solid transparent;
+      border-radius: 0; padding: 0.6rem 0; font-size: 0.875rem; color: var(--muted);
+    }
+    .manage-page .add-row input:focus {
+      border-bottom-color: #aaa; background: transparent; color: var(--text);
+    }
+    .manage-page .add-row input::placeholder { color: #bbb; }
+    .manage-page .add-row .btn-dark {
+      background: transparent; border: none; border-radius: 6px;
+      color: #999; font-size: 0.78rem; font-weight: 600; padding: 0.3rem 0.5rem;
+    }
+    .manage-page .add-row .btn-dark:hover { background: #eae9e4; color: var(--text); }
+    .manage-page .mrow-actions .btn-ghost {
+      border-color: transparent; color: #999; font-size: 0.73rem;
+    }
+    .manage-page .mrow-actions .btn-ghost:hover { border-color: #ddd; color: var(--text); background: #f0efe9; }
+    .manage-page .mrow-actions .btn-red {
+      border-color: transparent; font-size: 0.73rem;
+    }
+    .manage-page .mrow-actions .btn-red:hover { border-color: #f0c0c0; background: #fff0f0; }
     .gthread-chip {
       display: inline-flex; align-items: center; gap: 0.35rem;
       padding: 0.28rem 0.65rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;
@@ -1081,32 +1121,34 @@
 <div id="view-manage" style="display:none">
   <div class="manage-page">
 
-    <div style="display:flex;flex-direction:column;gap:1.25rem">
+    <div class="manage-col">
     <div class="msection">
-      <h2>Active Threads</h2>
+      <h2>Threads</h2>
       {% if threads_data %}
       <div class="mlist">
         {% for td in threads_data %}
         <div class="mrow" id="trow-{{ td.thread.id }}">
           <div class="dot" style="background: {{ td.color }}"></div>
           <div class="mrow-label" id="tlabel-{{ td.thread.id }}">{{ td.thread.name }}</div>
-          <div class="mrow-meta" id="tmeta-{{ td.thread.id }}">
-            {{ td.open_count }} open{% if td.total_count > td.open_count %} · {{ td.total_count - td.open_count }} done{% endif %}
-          </div>
           <form class="mrow-editform" id="tedit-{{ td.thread.id }}"
                 method="post" action="/threads/{{ td.thread.id }}/update">
             <input name="name" value="{{ td.thread.name }}" required maxlength="18" />
             <button class="btn btn-ghost btn-sm" type="submit">Save</button>
             <button class="btn btn-ghost btn-sm" type="button" onclick="cancelEdit('t',{{ td.thread.id }})">✕</button>
           </form>
-          <div class="mrow-actions" id="tactions-{{ td.thread.id }}">
-            {% if td.closed_tasks %}
-            <button class="btn btn-ghost btn-sm" onclick="toggleHistory({{ td.thread.id }}, this)">History</button>
-            {% endif %}
-            <button class="btn btn-ghost btn-sm" onclick="startEdit('t',{{ td.thread.id }})">Edit</button>
-            <form method="post" action="/threads/{{ td.thread.id }}/delete">
-              <button class="btn btn-red btn-sm" type="submit">Archive</button>
-            </form>
+          <div class="mrow-right" id="tright-{{ td.thread.id }}">
+            <div class="mrow-meta" id="tmeta-{{ td.thread.id }}">
+              {{ td.open_count }} open{% if td.total_count > td.open_count %} · {{ td.total_count - td.open_count }} done{% endif %}
+            </div>
+            <div class="mrow-actions" id="tactions-{{ td.thread.id }}">
+              {% if td.closed_tasks %}
+              <button class="btn btn-ghost btn-sm" onclick="toggleHistory({{ td.thread.id }}, this)">History</button>
+              {% endif %}
+              <button class="btn btn-ghost btn-sm" onclick="startEdit('t',{{ td.thread.id }})">Edit</button>
+              <form method="post" action="/threads/{{ td.thread.id }}/delete">
+                <button class="btn btn-red btn-sm" type="submit">Archive</button>
+              </form>
+            </div>
           </div>
         </div>
         {% if td.closed_tasks %}
@@ -1139,22 +1181,25 @@
 
     {% if inactive_threads %}
     <div class="msection">
-      <h2>Inactive Threads</h2>
+      <h2>Archived</h2>
       <div class="mlist">
         {% for t in inactive_threads %}
         <div class="mrow">
           <div class="dot" style="background:#ccc"></div>
           <div class="mrow-label" style="color:var(--muted)">{{ t.name }}</div>
-          <form method="post" action="/threads/{{ t.id }}/activate" style="margin-left:auto">
-            <button class="btn btn-ghost btn-sm" type="submit">Restore</button>
-          </form>
+          <div class="mrow-actions" style="opacity:1">
+            <form method="post" action="/threads/{{ t.id }}/activate">
+              <button class="btn btn-ghost btn-sm" type="submit">Restore</button>
+            </form>
+          </div>
         </div>
         {% endfor %}
       </div>
     </div>
     {% endif %}
-    </div><!-- end threads column wrapper -->
+    </div><!-- end threads manage-col -->
 
+    <div class="manage-col">
     <div class="msection">
       <h2>People</h2>
       {% if people %}
@@ -1163,9 +1208,6 @@
         <div class="mrow" id="prow-{{ p.id }}">
           <span style="font-size:1.1rem;line-height:1;flex-shrink:0">{{ p.emoji }}</span>
           <div class="mrow-label" id="plabel-{{ p.id }}">{{ p.name }}</div>
-          <div class="mrow-meta" id="pmeta-{{ p.id }}">
-            {% if p.open_count > 0 %}{{ p.open_count }} open{% endif %}
-          </div>
           <form class="mrow-editform" id="pedit-{{ p.id }}"
                 method="post" action="/people/{{ p.id }}/update">
             <input type="hidden" name="emoji" id="ep-val-{{ p.id }}" value="{{ p.emoji }}" />
@@ -1182,17 +1224,22 @@
             <button class="btn btn-ghost btn-sm" type="submit">Save</button>
             <button class="btn btn-ghost btn-sm" type="button" onclick="cancelEdit('p',{{ p.id }})">✕</button>
           </form>
-          <div class="mrow-actions" id="pactions-{{ p.id }}">
-            <button class="btn btn-ghost btn-sm" onclick="startEdit('p',{{ p.id }})">Edit</button>
-            {% if p.name | lower != 'me' %}
-            <form method="post" action="/people/{{ p.id }}/delete"
-                  onsubmit="return confirmDel('{{ p.name }}',{{ p.open_count }},'person')">
-              <button class="btn btn-red btn-sm" type="submit"
-                      {% if p.open_count > 0 %}disabled title="{{ p.open_count }} open task(s)"{% endif %}>
-                Remove
-              </button>
-            </form>
-            {% endif %}
+          <div class="mrow-right" id="pright-{{ p.id }}">
+            <div class="mrow-meta">
+              {% if p.open_count > 0 %}{{ p.open_count }} open{% endif %}
+            </div>
+            <div class="mrow-actions" id="pactions-{{ p.id }}">
+              <button class="btn btn-ghost btn-sm" onclick="startEdit('p',{{ p.id }})">Edit</button>
+              {% if p.name | lower != 'me' %}
+              <form method="post" action="/people/{{ p.id }}/delete"
+                    onsubmit="return confirmDel('{{ p.name }}',{{ p.open_count }},'person')">
+                <button class="btn btn-red btn-sm" type="submit"
+                        {% if p.open_count > 0 %}disabled title="{{ p.open_count }} open task(s)"{% endif %}>
+                  Remove
+                </button>
+              </form>
+              {% endif %}
+            </div>
           </div>
         </div>
         {% endfor %}
@@ -1206,7 +1253,9 @@
         </form>
       </div>
     </div>
+    </div><!-- end people manage-col -->
 
+    <div class="manage-col">
     <!-- Groups section -->
     <div class="msection">
       <h2>Groups</h2>
@@ -1217,19 +1266,21 @@
           <div class="mrow" id="grow-{{ g.group.id }}">
             <span style="font-size:1rem;flex-shrink:0;line-height:1">{{ g.group.icon or '◆' }}</span>
             <div class="mrow-label" id="glabel-{{ g.group.id }}">{{ g.group.name }}</div>
-            <div class="mrow-meta" id="gmeta-{{ g.group.id }}">{{ g.thread_ids | length }} thread{% if g.thread_ids | length != 1 %}s{% endif %}</div>
             <form class="mrow-editform" id="gedit-{{ g.group.id }}"
                   method="post" action="/groups/{{ g.group.id }}/update">
               <input name="name" value="{{ g.group.name }}" required maxlength="18" />
               <button class="btn btn-ghost btn-sm" type="submit">Save</button>
               <button class="btn btn-ghost btn-sm" type="button" onclick="cancelEdit('g',{{ g.group.id }})">✕</button>
             </form>
-            <div class="mrow-actions" id="gactions-{{ g.group.id }}">
-              <button class="btn btn-ghost btn-sm" onclick="toggleGroupPanel({{ g.group.id }}, this)">Threads</button>
-              <button class="btn btn-ghost btn-sm" onclick="startEdit('g',{{ g.group.id }})">Edit</button>
-              <form method="post" action="/groups/{{ g.group.id }}/delete">
-                <button class="btn btn-red btn-sm" type="submit">Remove</button>
-              </form>
+            <div class="mrow-right" id="gright-{{ g.group.id }}">
+              <div class="mrow-meta" id="gmeta-{{ g.group.id }}">{{ g.thread_ids | length }} thread{% if g.thread_ids | length != 1 %}s{% endif %}</div>
+              <div class="mrow-actions" id="gactions-{{ g.group.id }}">
+                <button class="btn btn-ghost btn-sm" onclick="toggleGroupPanel({{ g.group.id }}, this)">Threads</button>
+                <button class="btn btn-ghost btn-sm" onclick="startEdit('g',{{ g.group.id }})">Edit</button>
+                <form method="post" action="/groups/{{ g.group.id }}/delete">
+                  <button class="btn btn-red btn-sm" type="submit">Remove</button>
+                </form>
+              </div>
             </div>
           </div>
           <div id="gpanel-{{ g.group.id }}" style="display:none; padding:0.6rem 0.8rem; background:#fafaf8; border:1px solid #eeece8; border-radius:8px; margin-top:0.3rem; display:none;">
@@ -1262,6 +1313,7 @@
         </form>
       </div>
     </div>
+    </div><!-- end groups manage-col -->
 
   </div>
 </div>
@@ -1395,7 +1447,7 @@
 
   /* ── manage inline edit ── */
   function startEdit(pfx, id) {
-    ['label','meta','actions'].forEach(p => {
+    ['label','right'].forEach(p => {
       const el = document.getElementById(pfx + p + '-' + id);
       if (el) el.style.display = 'none';
     });
@@ -1405,7 +1457,7 @@
     if (inp) inp.focus();
   }
   function cancelEdit(pfx, id) {
-    ['label','meta','actions'].forEach(p => {
+    ['label','right'].forEach(p => {
       const el = document.getElementById(pfx + p + '-' + id);
       if (el) el.style.display = '';
     });
