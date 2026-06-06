@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ping Pong</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #f0efe9;
+      --card:   #ffffff;
+      --border: #e3e0d8;
+      --text:   #1a1a1a;
+      --muted:  #888;
+      --nav-h:  54px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh; overflow: hidden;
+    }
+    #view-home {
+      height: calc(100vh - var(--nav-h));
+      overflow-y: auto;
+    }
+    #view-manage {
+      height: calc(100vh - var(--nav-h));
+      overflow-y: auto;
+    }
+
+    /* ═══ NAV ═══════════════════════════════════════════════════════════════ */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      height: var(--nav-h);
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 1.5rem; gap: 1rem;
+    }
+    .brand { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.3px; }
+    .tabs  { display: flex; gap: 0.15rem; background: #eeede8; border-radius: 8px; padding: 3px; }
+    .tab-btn {
+      padding: 0.32rem 1rem; border: none; border-radius: 6px;
+      font-size: 0.85rem; font-weight: 500; color: var(--muted);
+      background: transparent; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .tab-btn.active { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .nav-filter {
+      display: flex; gap: 0.12rem;
+      background: #eeede8; border-radius: 8px; padding: 3px;
+    }
+    .nav-filter-btn {
+      padding: 0.32rem 0.9rem; border: none; border-radius: 6px;
+      font-size: 0.85rem; font-weight: 500; color: var(--muted);
+      background: transparent; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .nav-filter-btn.active { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .nav-spacer { flex: 1; }
+
+    /* ═══ HOME LAYOUT ════════════════════════════════════════════════════════ */
+    .home-layout {
+      display: grid;
+      grid-template-columns: 240px 1fr 272px;
+      gap: 1.1rem;
+      padding: 1.25rem 0.5rem 1.25rem 1rem;
+      align-items: start;
+    }
+
+    /* ═══ THREAD NAV (left) ══════════════════════════════════════════════════ */
+    .thread-nav {
+      position: sticky;
+      top: 1.25rem;
+      max-height: calc(100vh - var(--nav-h) - 2.5rem);
+      overflow-y: auto;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 13px;
+    }
+    .thread-nav::-webkit-scrollbar { width: 4px; }
+    .thread-nav::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+    .tn-title {
+      font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--muted);
+      padding: 0.85rem 1rem 0.5rem;
+      position: sticky; top: 0;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tn-title-add {
+      font-size: 1rem; font-weight: 400; line-height: 1;
+      color: #bbb; cursor: pointer; padding: 0 2px;
+      transition: color 0.12s; text-transform: none; letter-spacing: 0;
+    }
+    .tn-title-add:hover { color: #4a90e2; }
+
+    .tn-list { padding: 0.35rem 0 0.5rem; }
+
+    .tn-item {
+      display: flex; align-items: center; gap: 0.55rem;
+      padding: 0.58rem 0.9rem 0.58rem 0.75rem;
+      cursor: pointer;
+      transition: background 0.1s;
+      user-select: none;
+      border-left: 3px solid transparent;
+    }
+    .tn-item:hover { background: #f5f4f0; border-left-color: #ddd; }
+    .tn-item.active { background: #f0effa; border-left-color: #4a90e2; }
+    .tn-item.active .tn-name { color: #4a90e2; font-weight: 600; }
+
+    .tn-drag {
+      flex-shrink: 0; color: #d0cdc8; font-size: 0.75rem;
+      opacity: 0; cursor: grab;
+      transition: opacity 0.1s;
+    }
+    .tn-item:hover .tn-drag { opacity: 1; }
+
+    .tn-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .tn-name {
+      flex: 1; font-size: 0.875rem; font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .tn-count {
+      flex-shrink: 0;
+      font-size: 0.68rem; font-weight: 600; color: #999;
+      background: #eeede8; border-radius: 10px;
+      padding: 0.05rem 0.4rem;
+    }
+
+    .tn-section-divider {
+      font-size: 0.65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em; color: #ccc;
+      padding: 0.65rem 0.9rem 0.2rem 0.9rem;
+      border-top: 1px solid #f2f1ec; margin-top: 0.25rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tn-section-divider .tn-title-add { font-size: 1rem; }
+
+    .tn-group-item {
+      display: flex; align-items: center; gap: 0.55rem;
+      padding: 0.52rem 0.9rem 0.52rem 0.75rem;
+      cursor: pointer; transition: background 0.1s; user-select: none;
+      border-left: 3px solid transparent;
+    }
+    .tn-group-item:hover { background: #f5f4f0; border-left-color: #ddd; }
+    .tn-group-item.active { background: #f5f0fa; border-left-color: #9b6be2; }
+    .tn-group-item.active .tn-name { color: #9b6be2; font-weight: 600; }
+    .tn-group-icon { font-size: 1rem; flex-shrink: 0; line-height: 1; }
+
+    .tdv-drag {
+      flex-shrink: 0; color: #ccc; font-size: 0.85rem; line-height: 1;
+      cursor: grab; padding: 0 2px; opacity: 0;
+      transition: opacity 0.1s;
+    }
+    .thread-detail-view:hover .tdv-drag { opacity: 1; }
+    .thread-detail-view.sortable-ghost { opacity: 0.35; }
+    .thread-detail-view.sortable-drag  { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+
+    .tn-add {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 0.9rem;
+      border-top: 1px solid #f2f1ec;
+      margin-top: 0.2rem;
+      cursor: pointer;
+      font-size: 0.8rem; color: #bbb;
+      transition: color 0.12s;
+    }
+    .tn-add:hover { color: #4a90e2; }
+
+    /* ═══ THREAD DETAIL (middle) ═════════════════════════════════════════════ */
+    .thread-detail {
+      columns: 2;
+      column-gap: 1rem;
+    }
+
+    .thread-detail-empty {
+      column-span: all;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 300px; gap: 0.5rem;
+      color: #ccc; font-size: 0.9rem;
+    }
+
+    #nt-form { column-span: all; }
+
+    .thread-detail-view {
+      break-inside: avoid;
+      margin-bottom: 1rem;
+    }
+
+    .thread-detail-view {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 13px;
+      overflow: hidden;
+    }
+
+    .tdv-stripe {
+      height: 4px;
+      background: var(--accent, #4a90e2);
+    }
+
+    .tdv-body {
+      padding: 1.1rem 1.5rem 0;
+    }
+
+    .tdv-header {
+      display: flex; align-items: center; gap: 0.6rem;
+      margin-bottom: 1rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tdv-header:hover .tdv-close { color: #999; }
+    .tdv-name { font-size: 1rem; font-weight: 700; flex: 1; }
+    .tdv-close {
+      font-size: 0.72rem; color: #ccc;
+      transition: color 0.12s;
+    }
+    .tc-count {
+      font-size: 0.72rem; font-weight: 600;
+      color: var(--accent, #4a90e2);
+      background: color-mix(in srgb, var(--accent, #4a90e2) 12%, transparent);
+      border-radius: 20px; padding: 0.1rem 0.45rem;
+      white-space: nowrap;
+    }
+
+    /* task rows */
+    .tc-tasks { flex: 1; }
+    .tc-row {
+      display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.4rem;
+      padding: 0.5rem 0;
+      border-top: 1px solid #f2f1ec;
+      font-size: 0.84rem;
+    }
+    .tc-row:first-child { border-top: none; }
+
+    .tc-drag-handle {
+      flex-shrink: 0; color: #ccc; font-size: 0.8rem; line-height: 1;
+      cursor: grab; padding: 0 1px; opacity: 0;
+      transition: opacity 0.1s;
+    }
+    .tc-task-wrap:hover .tc-drag-handle { opacity: 1; }
+
+    .tc-desc {
+      flex: 1; min-width: 0;
+      color: #222; cursor: pointer; word-break: break-word;
+    }
+    .tc-due {
+      flex-shrink: 0; font-size: 0.7rem; font-weight: 500;
+      padding: 0.1rem 0.35rem; border-radius: 4px; white-space: nowrap;
+    }
+    .tc-due.future  { background: #eef6ee; color: #2e7d32; }
+    .tc-due.soon    { background: #fff8e1; color: #bf6000; }
+    .tc-due.overdue { background: #fdecea; color: #c62828; }
+
+    .tc-done {
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+      border: 1.5px solid #d0cec8; background: transparent; color: #ccc;
+      font-size: 0.65rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+    .tc-done:hover { border-color: #4caf50; color: #4caf50; background: #f0fbf0; }
+
+    .tc-edit-btn {
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+      border: 1.5px solid transparent; background: transparent; color: #ccc;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.1s, border-color 0.12s, color 0.12s;
+    }
+    .tc-row:hover .tc-edit-btn { opacity: 1; }
+    .tc-edit-btn:hover { border-color: #4a90e2; color: #4a90e2; }
+
+
+    .tc-empty { font-size: 0.82rem; color: #bbb; padding: 0.6rem 0 0.8rem; }
+
+    .tc-group + .tc-group { border-top: 1px solid #eeede8; margin-top: 0.3rem; padding-top: 0.3rem; }
+    .tc-group-label {
+      font-size: 0.68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: #bbb; padding: 0.5rem 0 0.25rem;
+    }
+    .tc-group-label.is-now { color: #2e8b57; }
+
+    /* add-item footer */
+    .tc-footer {
+      border-top: 1px solid #f2f1ec;
+      padding: 0.65rem 0;
+      margin-top: 0.4rem;
+    }
+    .tc-add-btn {
+      display: flex; align-items: center; gap: 0.3rem;
+      background: none; border: none; cursor: pointer;
+      font-size: 0.82rem; color: #aaa; padding: 0.15rem 0;
+      transition: color 0.12s;
+    }
+    .tc-add-btn:hover { color: var(--accent, #4a90e2); }
+    .tc-add-btn svg { flex-shrink: 0; }
+
+    .tc-add-panel {
+      display: none;
+      margin: 0.4rem 0 0.6rem;
+      padding: 0.85rem 0.9rem 0.8rem;
+      background: #f5f4ef;
+      border-radius: 11px;
+      border: 1px solid #e5e2da;
+    }
+    .tc-add-panel.open { display: block; }
+    .tc-edit-panel {
+      display: none;
+      margin: 0 0 0.4rem;
+      padding: 0.85rem 0.9rem 0.8rem;
+      background: #f5f4ef;
+      border-radius: 11px;
+      border: 1px solid #e5e2da;
+    }
+    .tc-add-panel form, .tc-edit-panel form { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .tc-add-panel input[name="description"],
+    .tc-edit-panel input[name="description"] {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1.5px solid #e0ddd8;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .tc-add-panel input[name="description"]:focus,
+    .tc-edit-panel input[name="description"]:focus {
+      border-color: var(--accent, #4a90e2);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #4a90e2) 12%, transparent);
+    }
+    .tc-add-panel input[name="description"]::placeholder,
+    .tc-edit-panel input[name="description"]::placeholder { color: #bbb; }
+
+    .tc-add-panel select, .tc-edit-panel select {
+      width: 100%; padding: 0.45rem 1.6rem 0.45rem 0.65rem;
+      border: 1.5px solid #e0ddd8; border-radius: 8px;
+      font-size: 0.82rem; font-family: inherit;
+      background: #fff; color: var(--text);
+      outline: none; cursor: pointer;
+      transition: border-color 0.12s;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23bbb' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.6rem center;
+    }
+    .tc-add-panel select:focus, .tc-edit-panel select:focus { border-color: var(--accent, #4a90e2); }
+
+    .tc-add-panel .add-btns, .tc-edit-panel .add-btns {
+      display: flex; gap: 0.4rem; padding-top: 0.1rem;
+    }
+    .tc-add-panel .add-btns .submit, .tc-edit-panel .add-btns .submit {
+      flex: 1; padding: 0.48rem 0;
+      background: var(--accent, #4a90e2); color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 0.84rem; font-weight: 600; cursor: pointer;
+      transition: filter 0.12s;
+    }
+    .tc-add-panel .add-btns .submit:hover, .tc-edit-panel .add-btns .submit:hover { filter: brightness(1.1); }
+    .tc-add-panel .add-btns .cancel, .tc-edit-panel .add-btns .cancel {
+      padding: 0.48rem 0.9rem;
+      background: transparent; color: #aaa;
+      border: none; border-radius: 8px;
+      font-size: 0.82rem; cursor: pointer;
+      transition: color 0.12s;
+    }
+    .tc-add-panel .add-btns .cancel:hover, .tc-edit-panel .add-btns .cancel:hover { color: #666; }
+
+    .qap-wrap { display: none; align-items: center; gap: 0.3rem; }
+    .qap-wrap.open { display: flex; }
+    .qap-input {
+      flex: 1; padding: 0.38rem 0.55rem;
+      border: 1.5px solid #4a90e2; border-radius: 7px;
+      font-size: 0.82rem; outline: none; background: #fff; font-family: inherit;
+    }
+    .qap-btn {
+      flex-shrink: 0; padding: 0.35rem 0.65rem; border: none; border-radius: 7px;
+      background: #1a1a1a; color: #fff; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    }
+    .qap-btn:hover { background: #333; }
+    .qap-cancel {
+      flex-shrink: 0; padding: 0.35rem 0.45rem; border: 1px solid #ddd; border-radius: 7px;
+      background: transparent; color: #aaa; font-size: 0.78rem; cursor: pointer;
+    }
+
+    /* ═══ TASK NOTES ═════════════════════════════════════════════════════════ */
+    .tc-notes-panel { display: none; padding: 0.45rem 0 0.5rem; border-top: 1px solid #f2f1ec; }
+    .tc-notes-panel.open { display: block; }
+    .tc-notes-textarea {
+      width: 100%; resize: none;
+      border: 1px solid #e0ddd8; border-radius: 7px;
+      padding: 0.45rem 0.6rem; font-size: 0.8rem; line-height: 1.45;
+      font-family: inherit; color: var(--text); background: #fafaf8; outline: none;
+      transition: border-color 0.12s; field-sizing: content; min-height: 3.5rem;
+    }
+    .tc-notes-textarea:focus { border-color: var(--accent, #4a90e2); background: #fff; }
+    .tc-notes-indicator {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent, #4a90e2); flex-shrink: 0; align-self: center; opacity: 0;
+    }
+    .tc-notes-indicator.has-notes { opacity: 1; }
+
+    /* ═══ SIDEBAR ════════════════════════════════════════════════════════════ */
+    .sidebar {
+      position: sticky; top: 1.25rem;
+      height: calc(100vh - var(--nav-h) - 2.5rem);
+      overflow: hidden; background: var(--card);
+      border: 1.5px solid var(--border); border-radius: 13px;
+      display: flex; flex-direction: column;
+    }
+    .sidebar-upper {
+      flex: 1; min-height: 0; overflow-y: auto;
+    }
+    .sb-resize-handle {
+      flex-shrink: 0; height: 6px;
+      background: var(--border);
+      cursor: ns-resize; position: relative; z-index: 1;
+      transition: background 0.12s;
+    }
+    .sb-resize-handle::after {
+      content: ''; position: absolute; inset: -4px 0;
+    }
+    .sb-resize-handle:hover, .sb-resize-handle.dragging { background: #b5b0a8; }
+    .sidebar-lower {
+      flex-shrink: 0;
+    }
+    .sidebar-lower.expanded {
+      overflow-y: auto;
+    }
+    .sidebar::-webkit-scrollbar,
+    .sidebar-upper::-webkit-scrollbar,
+    .sidebar-lower::-webkit-scrollbar { width: 4px; }
+    .sidebar-upper::-webkit-scrollbar-thumb,
+    .sidebar-lower::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+    .sidebar-title {
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
+      padding: 0.9rem 1rem 0.5rem 1.25rem;
+      position: sticky; top: 0; background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .sidebar.deadline-mode .sidebar-title {
+      background: #fff5f5;
+      border-bottom-color: #fca5a5;
+      color: #b91c1c;
+    }
+    .sidebar-actions { display: flex; align-items: center; gap: 0.5rem; }
+    .sb-export {
+      font-size: 0.7rem; color: #aaa; text-decoration: none;
+      padding: 0.15rem 0.4rem; border: 1px solid #e0ddd8; border-radius: 5px;
+      transition: color 0.12s, border-color 0.12s;
+      text-transform: none; letter-spacing: 0; font-weight: 500;
+    }
+    .sb-export:hover { color: #4a90e2; border-color: #4a90e2; }
+
+    .sidebar-empty { padding: 1.5rem 1rem; font-size: 0.85rem; color: #bbb; text-align: center; }
+
+    .sb-group { padding: 0.6rem 0; }
+    .sb-group:not(:last-child) { border-bottom: 1px solid #f2f1ec; }
+
+    .sb-label {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.15rem 1rem 0.5rem 1.25rem;
+      cursor: pointer; user-select: none;
+    }
+    .sb-label:hover { opacity: 0.8; }
+    .sb-label-text { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .sb-label.now      .sb-label-text { color: #2e8b57; }
+    .sb-label.overdue  .sb-label-text { color: #c62828; }
+    .sb-label.asap     .sb-label-text { color: #d4580a; }
+    .sb-label.today    .sb-label-text { color: #bf6000; }
+    .sb-label.tomorrow .sb-label-text { color: #2e7d32; }
+    .sb-label.future   .sb-label-text { color: var(--muted); }
+    .sb-label.anytime  .sb-label-text { color: #aaa; }
+    .sb-collapse-icon { margin-left: auto; font-size: 0.6rem; color: #ccc; }
+    .sb-group.collapsed .sb-item,
+    .sb-group.collapsed .sb-person-group { display: none; }
+
+    .sb-person-label {
+      display: flex; align-items: center; gap: 0.3rem;
+      padding: 0.35rem 1rem 0.1rem 1.55rem;
+      font-size: 0.71rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; color: #bbb;
+    }
+    .sb-person-label.is-me { color: #2e8b57; }
+    .sb-person-group .sb-item { padding-left: 1.8rem; }
+
+    .sb-item {
+      display: flex; align-items: flex-start; gap: 0.55rem;
+      padding: 0.38rem 1rem; transition: background 0.1s;
+    }
+    .sb-item:hover { background: #fafaf8; }
+    .sb-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 0.3rem; }
+    .sb-body { flex: 1; min-width: 0; }
+    .sb-desc { font-size: 0.84rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #222; }
+    .sb-item[data-is-deadline="1"] .sb-desc { color: #b91c1c; font-weight: 700; }
+    .sb-meta { font-size: 0.74rem; color: var(--muted); display: flex; align-items: center; gap: 0.3rem; margin-top: 0.05rem; }
+    .sb-thread-tag { font-size: 0.68rem; font-weight: 600; padding: 0.06rem 0.35rem; border-radius: 4px; }
+    .sb-close {
+      flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+      border: 1.5px solid #e0ddd8; background: transparent; color: #ccc;
+      font-size: 0.6rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; margin-top: 0.15rem;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+    .sb-close:hover { border-color: #4caf50; color: #4caf50; background: #f0fbf0; }
+
+    /* ═══ MANAGE TAB ═════════════════════════════════════════════════════════ */
+    .manage-page {
+      padding: 1.75rem 1.25rem 4rem;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; align-items: start;
+    }
+    .msection {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: 13px; padding: 1.25rem 1.4rem;
+    }
+    .msection h2 {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem;
+    }
+    .mlist { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem; }
+    .mrow {
+      display: flex; align-items: center; gap: 0.55rem;
+      padding: 0.5rem 0.7rem; border: 1px solid #eeece8; border-radius: 8px; background: #fafaf8;
+    }
+    .mrow .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .mrow-label { flex: 1; font-size: 0.9rem; font-weight: 500; }
+    .mrow-meta  { font-size: 0.73rem; color: var(--muted); }
+    .mrow-actions { display: flex; gap: 0.3rem; }
+    .mrow-editform { display: none; flex: 1; gap: 0.35rem; align-items: center; }
+    .mrow-editform input {
+      flex: 1; padding: 0.28rem 0.5rem; border: 1px solid #ddd; border-radius: 6px;
+      font-size: 0.86rem; background: #fff; outline: none;
+    }
+    .mrow-editform input:focus { border-color: #4a90e2; }
+    .gthread-chip {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.28rem 0.65rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;
+      border: 1.5px solid #ddd; background: #fff; color: var(--muted);
+      cursor: pointer; user-select: none; transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .gthread-chip:hover { border-color: var(--chip-color); color: var(--text); }
+    .gthread-chip--on {
+      background: color-mix(in srgb, var(--chip-color) 12%, transparent);
+      border-color: var(--chip-color); color: var(--text); font-weight: 600;
+    }
+    .add-row { display: flex; gap: 0.5rem; }
+    .add-row input {
+      flex: 1; padding: 0.42rem 0.7rem; border: 1px solid #ddd; border-radius: 7px;
+      font-size: 0.88rem; background: #fafaf8; outline: none;
+    }
+    .add-row input:focus { border-color: #4a90e2; background: #fff; }
+    .btn { padding: 0.38rem 0.85rem; border: none; border-radius: 7px; font-size: 0.84rem; font-weight: 500; cursor: pointer; }
+    .btn-dark  { background: #1a1a1a; color: #fff; }
+    .btn-dark:hover { background: #333; }
+    .btn-ghost { background: transparent; border: 1px solid #ddd; color: #555; }
+    .btn-ghost:hover { background: #f0efe9; }
+    .btn-red   { background: transparent; border: 1px solid #f0c0c0; color: #c44; }
+    .btn-red:hover { background: #fff0f0; }
+    .btn-sm { padding: 0.25rem 0.55rem; font-size: 0.76rem; }
+    hr.div { border: none; border-top: 1px solid #eee; margin: 0.9rem 0; }
+
+    /* ═══ THREAD HISTORY ════════════════════════════════════════════════════ */
+    .th-panel { display: none; border-top: 1px solid #f0ede8; margin-top: 0.4rem; padding-top: 0.4rem; }
+    .th-panel.open { display: block; }
+    .th-row {
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.28rem 0;
+      font-size: 0.82rem; color: #999; border-top: 1px solid #f5f4f0;
+    }
+    .th-row:first-child { border-top: none; }
+    .th-check { color: #4caf50; font-size: 0.75rem; flex-shrink: 0; }
+    .th-desc  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .th-person { font-size: 0.75rem; color: #bbb; flex-shrink: 0; }
+
+    /* ═══ EMOJI PICKER ════════════════════════════════════════════════════════ */
+    .ep-wrap { position: relative; flex-shrink: 0; }
+    .ep-btn {
+      width: 2.1rem; height: 2.1rem; font-size: 1.1rem; line-height: 1;
+      border: 1px solid #ddd; border-radius: 6px; background: #fafaf8;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.12s;
+    }
+    .ep-btn:hover { border-color: #4a90e2; background: #fff; }
+    .ep-grid {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 300;
+      background: #fff; border: 1px solid #e0ddd8; border-radius: 10px;
+      padding: 0.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      grid-template-columns: repeat(6, 1fr); gap: 2px; width: 204px;
+    }
+    .ep-grid.open { display: grid; }
+    .ep-opt { font-size: 1.1rem; padding: 0.28rem; border: none; background: transparent; cursor: pointer; border-radius: 4px; line-height: 1; }
+    .ep-opt:hover { background: #f0efe9; }
+
+    /* ═══ DUE DATE SELECTOR ═════════════════════════════════════════════════ */
+    .due-type-row {
+      display: flex; gap: 3px;
+      background: #e8e5df; border-radius: 8px; padding: 3px;
+    }
+    .due-type-btn {
+      flex: 1; padding: 0.3rem 0; border-radius: 6px;
+      border: none; background: transparent;
+      font-size: 0.79rem; font-weight: 500; color: #999; cursor: pointer;
+      transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+    }
+    .due-type-btn:hover { color: #555; }
+    .due-type-btn.active {
+      background: #fff; color: var(--text); font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* effort picker */
+    .effort-fields { display: none; flex-direction: column; gap: 0.35rem; }
+    .effort-btn-row { display: flex; gap: 4px; }
+    .effort-pick-btn {
+      flex: 1; padding: 0.3rem 0; border-radius: 6px;
+      border: 1.5px solid transparent; cursor: pointer;
+      font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      background: transparent; color: #ccc;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .effort-pick-btn[data-level="mindless"]:hover,
+    .effort-pick-btn[data-level="mindless"].active { background: #e8f5f0; color: #2e7d5e; border-color: #9dd0be; }
+    .effort-pick-btn[data-level="standard"]:hover,
+    .effort-pick-btn[data-level="standard"].active { background: #dbeeff; color: #1a6fbd; border-color: #a8ccf0; }
+    .effort-pick-btn[data-level="intense"]:hover,
+    .effort-pick-btn[data-level="intense"].active  { background: #fff0e0; color: #c05800; border-color: #f0c080; }
+
+    /* date input inside the form */
+    input[type="date"].tc-date-input {
+      width: 100%; padding: 0.45rem 0.65rem;
+      border: 1.5px solid #e0ddd8; border-radius: 8px;
+      font-size: 0.82rem; font-family: inherit;
+      background: #fff; color: var(--text); outline: none;
+      transition: border-color 0.12s;
+    }
+    input[type="date"].tc-date-input:focus { border-color: var(--accent, #4a90e2); }
+
+    /* ═══ DEADLINE ══════════════════════════════════════════════════════════ */
+    .tc-deadline-flag {
+      flex-shrink: 0; font-size: 0.64rem; font-weight: 800;
+      color: #b91c1c; background: #fee2e2;
+      border: 1px solid #fca5a5;
+      padding: 0.06rem 0.4rem; border-radius: 4px;
+      text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+    }
+    .deadline-toggle-btn {
+      width: 100%; padding: 0.32rem 0.6rem; border-radius: 7px;
+      border: 1.5px solid #e8e4de; background: transparent;
+      font-size: 0.78rem; font-weight: 600; color: #bbb;
+      cursor: pointer; text-align: left;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .deadline-toggle-btn:hover { border-color: #e8564a; color: #e8564a; }
+    .deadline-toggle-btn.active { background: #ffe0dc; color: #c0392b; border-color: #e8a09a; }
+    .sb-deadline-btn {
+      font-size: 0.7rem; font-weight: 600; color: #bbb;
+      background: transparent; border: 1.5px solid #e8e4de;
+      border-radius: 5px; padding: 0.15rem 0.45rem;
+      cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s;
+      white-space: nowrap;
+    }
+    .sb-deadline-btn:hover { border-color: #e8564a; color: #e8564a; }
+    .sb-deadline-btn.active { background: #ffe0dc; color: #c0392b; border-color: #e8a09a; }
+
+    /* ═══ EFFORT TAGS ════════════════════════════════════════════════════════ */
+    .tc-effort {
+      flex-shrink: 0; font-size: 0.66rem; font-weight: 700;
+      padding: 0.08rem 0.38rem; border-radius: 4px;
+      text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    }
+    .effort-mindless { background: #e8f5f0; color: #2e7d5e; }
+    .effort-standard { background: #dbeeff; color: #1a6fbd; }
+    .effort-intense  { background: #fff0e0; color: #c05800; }
+
+    .tc-hours { flex-shrink: 0; font-size: 0.7rem; color: #bbb; white-space: nowrap; }
+
+    /* nav effort buttons — colorful pills, separated from All/Me */
+    .nav-effort-wrap {
+      display: none; align-items: center; gap: 0.4rem;
+      padding-left: 0.75rem;
+      border-left: 1.5px solid var(--border);
+      margin-left: 0.25rem;
+    }
+    .nav-effort-wrap.visible { display: flex; }
+    .nav-effort-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #bbb;
+    }
+    .nav-effort-btn {
+      font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+      padding: 0.26rem 0.65rem; border-radius: 20px; border: 1.5px solid transparent; cursor: pointer;
+      opacity: 0.5; transition: opacity 0.15s, border-color 0.12s;
+    }
+    .nav-effort-btn:hover { opacity: 0.8; }
+    .nav-effort-btn.active { opacity: 1; border-color: currentColor; }
+    .neb-all      { background: #f0f0f0; color: #666; }
+    .neb-mindless { background: #e8f5f0; color: #2e7d5e; }
+    .neb-standard { background: #dbeeff; color: #1a6fbd; }
+    .neb-intense  { background: #fff0e0; color: #c05800; }
+
+    /* ═══ DRAG STATES ════════════════════════════════════════════════════════ */
+    .tn-item.sortable-ghost { opacity: 0.35; }
+    .tc-task-wrap.sortable-ghost { opacity: 0.35; }
+    .tc-task-wrap.sortable-drag { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 6px; }
+
+    /* ═══ RESPONSIVE ═════════════════════════════════════════════════════════ */
+    @media (max-width: 1000px) {
+      .home-layout { grid-template-columns: 230px 1fr; }
+      .sidebar { display: none; }
+    }
+    @media (max-width: 680px) {
+      .home-layout { grid-template-columns: 1fr; }
+      .thread-nav { position: static; max-height: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="brand"><span style="font-size:1.35rem">🏓</span> Ping Pong</div>
+  <div class="nav-filter">
+    <button class="nav-filter-btn active" id="gf-all" onclick="setGlobalFilter('all')">All</button>
+    <button class="nav-filter-btn" id="gf-me" onclick="setGlobalFilter('me')">Me</button>
+  </div>
+  <div id="nav-effort-bar" class="nav-effort-wrap">
+    <span class="nav-effort-label">Effort</span>
+    <button class="nav-effort-btn neb-all active"  id="ef-all"      onclick="setGlobalEffortFilter('all',this)">All</button>
+    <button class="nav-effort-btn neb-mindless"    id="ef-mindless" onclick="setGlobalEffortFilter('mindless',this)">Mindless</button>
+    <button class="nav-effort-btn neb-standard"    id="ef-standard" onclick="setGlobalEffortFilter('standard',this)">Standard</button>
+    <button class="nav-effort-btn neb-intense"     id="ef-intense"  onclick="setGlobalEffortFilter('intense',this)">Intense</button>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="tabs">
+    <button class="tab-btn" id="btn-home"   onclick="switchTab('home')">Home</button>
+    <button class="tab-btn" id="btn-manage" onclick="switchTab('manage')">Manage</button>
+  </div>
+</nav>
+
+<!-- ════════ HOME TAB ════════ -->
+<div id="view-home">
+  <div class="home-layout">
+
+    <!-- Left: thread nav -->
+    <div class="thread-nav">
+      <div class="tn-title">
+        <span>Threads</span>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <span class="tn-title-add" onclick="openAllThreads()" title="Open all threads">⊞</span>
+          <span class="tn-title-add" onclick="showNewThread()" title="New thread">+</span>
+        </div>
+      </div>
+      <div class="tn-list" id="tn-list">
+        {% for td in threads_data %}
+        <div class="tn-item" data-id="{{ td.thread.id }}" onclick="selectThread({{ td.thread.id }})">
+          <span class="tn-drag">⠿</span>
+          <span class="tn-dot" style="background: {{ td.color }}"></span>
+          <span class="tn-name">{{ td.thread.name }}</span>
+          {% if td.open_count > 0 %}
+          <span class="tn-count">{{ td.open_count }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="tn-title">
+        <span>Groups</span>
+        <span class="tn-title-add" onclick="showNavGroupForm()" title="New group">+</span>
+      </div>
+      <div id="nav-group-create" style="display:none; padding:0.45rem 0.8rem; border-bottom:1px solid #f2f1ec;">
+        <form method="post" action="/groups" style="display:flex; flex-direction:column; gap:0.3rem;">
+          <input id="nav-group-input" name="name" type="text" placeholder="Group name…" required autocomplete="off" maxlength="18"
+                 style="padding:0.32rem 0.5rem; border:1px solid #ddd; border-radius:6px; font-size:0.8rem; outline:none;"
+                 onkeydown="if(event.key==='Escape'){hideNavGroupForm()}" />
+          <div style="display:flex; gap:0.3rem;">
+            <button type="submit" style="flex:1; padding:0.28rem; background:#1a1a1a; color:#fff; border:none; border-radius:5px; font-size:0.76rem; cursor:pointer;">Create</button>
+            <button type="button" onclick="hideNavGroupForm()" style="flex:1; padding:0.28rem; background:#f0efe9; color:#666; border:1px solid #ddd; border-radius:5px; font-size:0.76rem; cursor:pointer;">Cancel</button>
+          </div>
+        </form>
+      </div>
+      {% if groups_data %}
+      {% for g in groups_data %}
+      <div class="tn-group-item" data-group-id="{{ g.group.id }}"
+           data-thread-ids="{{ g.thread_ids | join(',') }}"
+           onclick="toggleGroup({{ g.group.id }})">
+        <span class="tn-group-icon">{{ g.group.icon or '◆' }}</span>
+        <span class="tn-name">{{ g.group.name }}</span>
+        {% if g.thread_ids %}
+        <span class="tn-count" style="background:transparent;color:#bbb">{{ g.thread_ids | length }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% endif %}
+
+    </div>
+
+    <!-- Middle: thread detail -->
+    <div class="thread-detail" id="thread-detail">
+      <div class="thread-detail-empty" id="thread-detail-empty">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" opacity="0.3">
+          <rect x="4" y="8" width="24" height="3" rx="1.5" fill="currentColor"/>
+          <rect x="4" y="15" width="18" height="3" rx="1.5" fill="currentColor"/>
+          <rect x="4" y="22" width="21" height="3" rx="1.5" fill="currentColor"/>
+        </svg>
+        <span>Select a thread</span>
+      </div>
+
+      <!-- new-thread form (shown in middle when adding) -->
+      <div id="nt-form" style="display:none; background: var(--card); border: 1.5px solid #4a90e2; border-radius: 13px; padding: 1.25rem 1.5rem;">
+        <form method="post" action="/threads" style="display:flex; flex-direction:column; gap:0.6rem; max-width:400px;">
+          <div style="font-size:0.85rem; font-weight:600; color: #4a90e2;">New Thread</div>
+          <input name="name" type="text" placeholder="Thread name…" required autocomplete="off" maxlength="18"
+                 style="padding:0.5rem 0.7rem; border:1px solid #ddd; border-radius:8px; font-size:0.9rem; outline:none;" />
+          <div style="display:flex; gap:0.4rem;">
+            <button type="submit" style="flex:1; padding:0.42rem; background:#1a1a1a; color:#fff; border:none; border-radius:7px; font-size:0.86rem; font-weight:500; cursor:pointer;">Create</button>
+            <button type="button" onclick="hideNewThread()" style="flex:1; padding:0.42rem; background:#f0efe9; color:#666; border:1px solid #ddd; border-radius:7px; font-size:0.86rem; cursor:pointer;">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Right: due sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-title">
+        <span id="sidebar-title-text">Due</span>
+        <div class="sidebar-actions">
+          <button class="sb-deadline-btn" id="sb-dl-toggle" onclick="toggleSidebarDeadlines(this)">Deadlines</button>
+          <a href="/export/csv" class="sb-export" download>↓ CSV</a>
+        </div>
+      </div>
+
+      {% macro sb_group(group) %}
+      <div class="sb-group">
+        <div class="sb-label {{ group.cls }}" onclick="toggleSbGroup(this)">
+          <span class="sb-label-text">{{ group.label }}</span>
+          <span class="sb-collapse-icon">▾</span>
+        </div>
+        {% for task in group.tasks %}
+        <div class="sb-item" data-is-me="{{ 'true' if task.is_me else 'false' }}" data-thread-id="{{ task.thread_id }}" data-is-deadline="{{ '1' if task.is_deadline else '0' }}" data-effort="{{ task.effort or '' }}">
+          <div class="sb-dot" style="background: {{ task.thread_color }}"></div>
+          <div class="sb-body">
+            <div class="sb-desc" title="{{ task.description }}">{{ task.description }}</div>
+            <div class="sb-meta">
+              {% if task.person_name %}
+              <span>{{ task.person_emoji }} {{ task.person_name }}</span>
+              <span>·</span>
+              {% endif %}
+              <span class="sb-thread-tag"
+                    style="background: color-mix(in srgb, {{ task.thread_color }} 12%, transparent); color: {{ task.thread_color }}">
+                {{ task.thread_name }}
+              </span>
+            </div>
+          </div>
+          <form method="post" action="/tasks/{{ task.id }}/close" style="display:inline">
+            <button class="sb-close" type="submit" title="Mark done">✓</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% endmacro %}
+
+      {% if due_upper %}
+      <div class="sidebar-upper">
+        {% for group in due_upper %}{{ sb_group(group) }}{% endfor %}
+      </div>
+      {% else %}
+      <div class="sidebar-upper">
+        <div class="sidebar-empty">No upcoming items</div>
+      </div>
+      {% endif %}
+
+      {% if due_anytime %}
+      <div class="sb-resize-handle" id="sb-resize-handle"></div>
+      <div class="sidebar-lower">
+        {{ sb_group(due_anytime) }}
+      </div>
+      {% endif %}
+    </div>
+
+  </div><!-- /home-layout -->
+
+  <!-- Pool of thread views; JS moves them in/out of #thread-detail -->
+  <div id="thread-detail-pool" style="display:none">
+    {% for td in threads_data %}
+    <div class="thread-detail-view" id="td-view-{{ td.thread.id }}" style="--accent: {{ td.color }}">
+      <div class="tdv-stripe"></div>
+      <div class="tdv-body">
+        <div class="tdv-header" onclick="selectThread({{ td.thread.id }})">
+          <span class="tdv-drag" title="Drag to reorder">⠿</span>
+          <span class="tdv-name">{{ td.thread.name }}</span>
+          {% if td.open_count > 0 %}<span class="tc-count">{{ td.open_count }}</span>{% endif %}
+        </div>
+
+        <div class="tc-tasks">
+          {% if not td.groups %}
+          <div class="tc-empty">All clear ✓</div>
+          {% else %}
+          {% for group in td.groups %}
+          <div class="tc-group">
+            <div class="tc-group-label {% if group.is_now %}is-now{% endif %}">{{ group.label }}</div>
+            {% for task in group.tasks %}
+            <div class="tc-task-wrap" id="twrap-{{ task.id }}" data-id="{{ task.id }}"
+                 data-is-me="{{ 'true' if task.person_id == me_id else 'false' }}">
+              <div class="tc-row" id="tk-row-{{ task.id }}">
+                <span class="tc-drag-handle" title="Drag to reorder">⠿</span>
+                <div class="tc-notes-indicator {% if task.notes %}has-notes{% endif %}" id="tind-{{ task.id }}"></div>
+                <span class="tc-desc" data-view title="{{ task.description }}"
+                      onclick="toggleNotes({{ task.id }})">{{ task.description }}</span>
+                {% if task.due_date %}
+                <span class="tc-due {{ task.due_date | date_cls }}" data-view>{{ task.due_date | fmt_date }}</span>
+                {% endif %}
+                {% if task.effort and task.person_id == me_id %}
+                <span class="tc-effort effort-{{ task.effort }}" data-view data-effort="{{ task.effort }}" data-effort-tag>{{ task.effort }}</span>
+                {% endif %}
+                {% if task.is_deadline %}
+                <span class="tc-deadline-flag" data-view>deadline</span>
+                {% endif %}
+                <button class="tc-edit-btn" data-view type="button" onclick="startTaskEdit({{ task.id }})" title="Edit">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M7 1.5l1.5 1.5L3 8.5H1.5V7L7 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <form method="post" action="/tasks/{{ task.id }}/close" style="display:inline" data-view>
+                  <button class="tc-done" type="submit" title="Mark done">✓</button>
+                </form>
+              </div>
+              <div class="tc-edit-panel" id="tk-edit-{{ task.id }}" data-due="{{ task.due_date or 'ASAP' }}" style="display:none">
+                <form method="post" action="/tasks/{{ task.id }}/update">
+                  <input name="description" value="{{ task.description }}" required
+                         onkeydown="if(event.key==='Escape'){event.preventDefault();cancelTaskEdit({{ task.id }})}" />
+                  <select name="person_id" onchange="_checkEffortVisibility(this)">
+                    {% for p in td.people %}
+                    <option value="{{ p.id }}" {% if p.id == task.person_id %}selected{% endif %}>{{ p.emoji }} {{ p.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="effort-fields">
+                    <div class="effort-btn-row">
+                      <button type="button" class="effort-pick-btn" data-level="mindless" onclick="pickEffort(this)">Mindless</button>
+                      <button type="button" class="effort-pick-btn" data-level="standard"  onclick="pickEffort(this)">Standard</button>
+                      <button type="button" class="effort-pick-btn" data-level="intense"   onclick="pickEffort(this)">Intense</button>
+                    </div>
+                    <input type="hidden" name="effort" value="{{ task.effort or 'standard' }}" />
+                  </div>
+                  <input type="hidden" name="due_date" id="due-edit-{{ task.id }}" value="{{ task.due_date or 'ASAP' }}" />
+                  <div class="due-type-row">
+                    <button type="button" class="due-type-btn" onclick="pickEditDueType({{ task.id }},'ASAP',this)">ASAP</button>
+                    <button type="button" class="due-type-btn" onclick="pickEditDueType({{ task.id }},'ANYTIME',this)">Anytime</button>
+                    <button type="button" class="due-type-btn" onclick="pickEditDueType({{ task.id }},'date',this)">Date ›</button>
+                  </div>
+                  <input type="date" id="due-edit-date-{{ task.id }}" class="tc-date-input" style="display:none"
+                         oninput="document.getElementById('due-edit-{{ task.id }}').value = this.value" />
+                  <button type="button" class="deadline-toggle-btn {% if task.is_deadline %}active{% endif %}" onclick="toggleDeadline(this)">! Mark as deadline</button>
+                  <input type="hidden" name="is_deadline" value="{{ '1' if task.is_deadline else '0' }}" />
+                  <div class="add-btns">
+                    <button class="submit" type="submit">Save →</button>
+                    <button class="cancel" type="button" onclick="cancelTaskEdit({{ task.id }})">Cancel</button>
+                  </div>
+                </form>
+              </div>
+              <div class="tc-notes-panel" id="tnotes-{{ task.id }}">
+                <textarea class="tc-notes-textarea" placeholder="Add a note…"
+                          oninput="saveNotes({{ task.id }}, this.value)"
+                          >{{ task.notes or '' }}</textarea>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+          {% endif %}
+        </div>
+
+        <div class="tc-footer">
+          <button class="tc-add-btn" onclick="toggleAdd({{ td.thread.id }}, this)">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            Add item
+          </button>
+          <div class="tc-add-panel" id="ap-{{ td.thread.id }}">
+            {% if not people %}
+            <p style="font-size:0.78rem;color:#e07000">Add people in Manage first.</p>
+            {% else %}
+            <form method="post" action="/tasks">
+              <input type="hidden" name="thread_id" value="{{ td.thread.id }}" />
+              <input name="description" type="text" placeholder="What needs to happen?" required autocomplete="off" />
+              <select name="person_id" required onchange="handlePersonSel(this)">
+                <option value="" disabled {% if not me_id %}selected{% endif %}>Who has the ball?</option>
+                {% for p in td.people %}
+                <option value="{{ p.id }}" {% if p.id == me_id %}selected{% endif %}>{{ p.emoji }} {{ p.name }}</option>
+                {% endfor %}
+                <option value="__new__">＋ Add new person…</option>
+              </select>
+              <div class="qap-wrap">
+                <input class="qap-input" type="text" placeholder="Name…" maxlength="60"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();quickAddPerson(this)}else if(event.key==='Escape'){cancelQap(this)}" />
+                <button class="qap-btn" type="button" onclick="quickAddPerson(this.previousElementSibling)">Add</button>
+                <button class="qap-cancel" type="button" onclick="cancelQap(this.previousElementSibling.previousElementSibling)">✕</button>
+              </div>
+              <div class="effort-fields" id="ef-fields-{{ td.thread.id }}">
+                <div class="effort-btn-row">
+                  <button type="button" class="effort-pick-btn" data-level="mindless" onclick="pickEffort(this)">Mindless</button>
+                  <button type="button" class="effort-pick-btn effort-pick-btn--default" data-level="standard" onclick="pickEffort(this)">Standard</button>
+                  <button type="button" class="effort-pick-btn" data-level="intense"   onclick="pickEffort(this)">Intense</button>
+                </div>
+                <input type="hidden" name="effort" value="standard" />
+              </div>
+              <input type="hidden" name="due_date" id="due-hidden-{{ td.thread.id }}" value="ANYTIME" />
+              <div class="due-type-row">
+                <button type="button" class="due-type-btn" onclick="pickDueType('{{ td.thread.id }}','ASAP',this)">ASAP</button>
+                <button type="button" class="due-type-btn active" onclick="pickDueType('{{ td.thread.id }}','ANYTIME',this)">Anytime</button>
+                <button type="button" class="due-type-btn" onclick="pickDueType('{{ td.thread.id }}','date',this)">Date ›</button>
+              </div>
+              <input type="date" id="me-date-{{ td.thread.id }}" class="tc-date-input" style="display:none"
+                     oninput="document.getElementById('due-hidden-{{ td.thread.id }}').value = this.value" />
+              <button type="button" class="deadline-toggle-btn" onclick="toggleDeadline(this)">! Mark as deadline</button>
+              <input type="hidden" name="is_deadline" value="0" />
+              <div class="add-btns">
+                <button class="submit" type="submit">Add →</button>
+                <button class="cancel" type="button" onclick="toggleAdd({{ td.thread.id }}, null)">Cancel</button>
+              </div>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ MANAGE TAB ════════ -->
+<div id="view-manage" style="display:none">
+  <div class="manage-page">
+
+    <div style="display:flex;flex-direction:column;gap:1.25rem">
+    <div class="msection">
+      <h2>Active Threads</h2>
+      {% if threads_data %}
+      <div class="mlist">
+        {% for td in threads_data %}
+        <div class="mrow" id="trow-{{ td.thread.id }}">
+          <div class="dot" style="background: {{ td.color }}"></div>
+          <div class="mrow-label" id="tlabel-{{ td.thread.id }}">{{ td.thread.name }}</div>
+          <div class="mrow-meta" id="tmeta-{{ td.thread.id }}">
+            {{ td.open_count }} open{% if td.total_count > td.open_count %} · {{ td.total_count - td.open_count }} done{% endif %}
+          </div>
+          <form class="mrow-editform" id="tedit-{{ td.thread.id }}"
+                method="post" action="/threads/{{ td.thread.id }}/update">
+            <input name="name" value="{{ td.thread.name }}" required maxlength="18" />
+            <button class="btn btn-ghost btn-sm" type="submit">Save</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="cancelEdit('t',{{ td.thread.id }})">✕</button>
+          </form>
+          <div class="mrow-actions" id="tactions-{{ td.thread.id }}">
+            {% if td.closed_tasks %}
+            <button class="btn btn-ghost btn-sm" onclick="toggleHistory({{ td.thread.id }}, this)">History</button>
+            {% endif %}
+            <button class="btn btn-ghost btn-sm" onclick="startEdit('t',{{ td.thread.id }})">Edit</button>
+            <form method="post" action="/threads/{{ td.thread.id }}/delete">
+              <button class="btn btn-red btn-sm" type="submit">Archive</button>
+            </form>
+          </div>
+        </div>
+        {% if td.closed_tasks %}
+        <div class="th-panel" id="thist-{{ td.thread.id }}">
+          {% for task in td.closed_tasks %}
+          <div class="th-row">
+            <span class="th-check">✓</span>
+            <span class="th-desc" title="{{ task.description }}">{{ task.description }}</span>
+            {% if task.person_name %}
+            <span class="th-person">{{ task.person_emoji }} {{ task.person_name }}</span>
+            {% endif %}
+            {% if task.closed_at %}
+            <span class="th-person" style="color:#ccc">{{ task.closed_at | fmt_ts }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <hr class="div" />
+      {% endif %}
+      <div class="add-row">
+        <form method="post" action="/threads" style="display:flex;gap:0.5rem;flex:1">
+          <input name="name" type="text" placeholder="New thread name…" required autocomplete="off" maxlength="18" />
+          <button class="btn btn-dark" type="submit">Create</button>
+        </form>
+      </div>
+    </div>
+
+    {% if inactive_threads %}
+    <div class="msection">
+      <h2>Inactive Threads</h2>
+      <div class="mlist">
+        {% for t in inactive_threads %}
+        <div class="mrow">
+          <div class="dot" style="background:#ccc"></div>
+          <div class="mrow-label" style="color:var(--muted)">{{ t.name }}</div>
+          <form method="post" action="/threads/{{ t.id }}/activate" style="margin-left:auto">
+            <button class="btn btn-ghost btn-sm" type="submit">Restore</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    </div><!-- end threads column wrapper -->
+
+    <div class="msection">
+      <h2>People</h2>
+      {% if people %}
+      <div class="mlist">
+        {% for p in people %}
+        <div class="mrow" id="prow-{{ p.id }}">
+          <span style="font-size:1.1rem;line-height:1;flex-shrink:0">{{ p.emoji }}</span>
+          <div class="mrow-label" id="plabel-{{ p.id }}">{{ p.name }}</div>
+          <div class="mrow-meta" id="pmeta-{{ p.id }}">
+            {% if p.open_count > 0 %}{{ p.open_count }} open{% endif %}
+          </div>
+          <form class="mrow-editform" id="pedit-{{ p.id }}"
+                method="post" action="/people/{{ p.id }}/update">
+            <input type="hidden" name="emoji" id="ep-val-{{ p.id }}" value="{{ p.emoji }}" />
+            <div class="ep-wrap">
+              <button type="button" class="ep-btn" id="ep-btn-{{ p.id }}"
+                      onclick="toggleEmojiPicker({{ p.id }})">{{ p.emoji }}</button>
+              <div class="ep-grid" id="ep-grid-{{ p.id }}">
+                {% for e in all_emojis %}
+                <button type="button" class="ep-opt" onclick="pickEmoji({{ p.id }}, '{{ e }}')">{{ e }}</button>
+                {% endfor %}
+              </div>
+            </div>
+            <input name="name" value="{{ p.name }}" required />
+            <button class="btn btn-ghost btn-sm" type="submit">Save</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="cancelEdit('p',{{ p.id }})">✕</button>
+          </form>
+          <div class="mrow-actions" id="pactions-{{ p.id }}">
+            <button class="btn btn-ghost btn-sm" onclick="startEdit('p',{{ p.id }})">Edit</button>
+            {% if p.name | lower != 'me' %}
+            <form method="post" action="/people/{{ p.id }}/delete"
+                  onsubmit="return confirmDel('{{ p.name }}',{{ p.open_count }},'person')">
+              <button class="btn btn-red btn-sm" type="submit"
+                      {% if p.open_count > 0 %}disabled title="{{ p.open_count }} open task(s)"{% endif %}>
+                Remove
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <hr class="div" />
+      {% endif %}
+      <div class="add-row">
+        <form method="post" action="/people" style="display:flex;gap:0.5rem;flex:1">
+          <input name="name" type="text" placeholder="Add a person…" required autocomplete="off" />
+          <button class="btn btn-dark" type="submit">Add</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Groups section -->
+    <div class="msection">
+      <h2>Groups</h2>
+      {% if groups_data %}
+      <div class="mlist">
+        {% for g in groups_data %}
+        <div>
+          <div class="mrow" id="grow-{{ g.group.id }}">
+            <span style="font-size:1rem;flex-shrink:0;line-height:1">{{ g.group.icon or '◆' }}</span>
+            <div class="mrow-label" id="glabel-{{ g.group.id }}">{{ g.group.name }}</div>
+            <div class="mrow-meta" id="gmeta-{{ g.group.id }}">{{ g.thread_ids | length }} thread{% if g.thread_ids | length != 1 %}s{% endif %}</div>
+            <form class="mrow-editform" id="gedit-{{ g.group.id }}"
+                  method="post" action="/groups/{{ g.group.id }}/update">
+              <input name="name" value="{{ g.group.name }}" required maxlength="18" />
+              <button class="btn btn-ghost btn-sm" type="submit">Save</button>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="cancelEdit('g',{{ g.group.id }})">✕</button>
+            </form>
+            <div class="mrow-actions" id="gactions-{{ g.group.id }}">
+              <button class="btn btn-ghost btn-sm" onclick="toggleGroupPanel({{ g.group.id }}, this)">Threads</button>
+              <button class="btn btn-ghost btn-sm" onclick="startEdit('g',{{ g.group.id }})">Edit</button>
+              <form method="post" action="/groups/{{ g.group.id }}/delete">
+                <button class="btn btn-red btn-sm" type="submit">Remove</button>
+              </form>
+            </div>
+          </div>
+          <div id="gpanel-{{ g.group.id }}" style="display:none; padding:0.6rem 0.8rem; background:#fafaf8; border:1px solid #eeece8; border-radius:8px; margin-top:0.3rem; display:none;">
+            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+              {% for td in threads_data %}
+              {% set checked = td.thread.id in g.thread_ids %}
+              <label style="display:contents;cursor:pointer;">
+                <input type="checkbox" style="display:none"
+                       {% if checked %}checked{% endif %}
+                       onchange="toggleGroupThread({{ g.group.id }}, {{ td.thread.id }}, this.checked, this.nextElementSibling)" />
+                <span class="gthread-chip {% if checked %}gthread-chip--on{% endif %}"
+                      style="--chip-color:{{ td.color }}"
+                      onclick="this.previousElementSibling.click()">
+                  <span style="width:7px;height:7px;border-radius:50%;background:{{ td.color }};display:inline-block;flex-shrink:0"></span>
+                  {{ td.thread.name }}
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <hr class="div" />
+      {% endif %}
+      <div class="add-row">
+        <form method="post" action="/groups" style="display:flex;gap:0.5rem;flex:1">
+          <input name="name" type="text" placeholder="New group name…" required autocomplete="off" maxlength="18" />
+          <button class="btn btn-dark" type="submit">Create</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+  /* ── tab switching ── */
+  function switchTab(name) {
+    ['home','manage'].forEach(t => {
+      document.getElementById('view-' + t).style.display = t === name ? '' : 'none';
+      document.getElementById('btn-' + t).classList.toggle('active', t === name);
+    });
+    const homeOnly = document.getElementById('gf-all').closest('.nav-filter');
+    homeOnly.style.display = name === 'home' ? '' : 'none';
+    document.getElementById('nav-effort-bar').classList.toggle(
+      'visible', name === 'home' && document.getElementById('gf-me').classList.contains('active'));
+    try { localStorage.setItem('pp-tab', name); } catch(e) {}
+  }
+  const stored = (() => { try { return localStorage.getItem('pp-tab'); } catch(e) { return null; } })();
+  switchTab(stored || 'home');
+
+  /* ── thread selection (multi-open, 2-per-row, draggable) ── */
+  const _openThreads = new Set();
+  let _sidebarDeadlineOnly = false;
+  const _detail = document.getElementById('thread-detail');
+  const _pool   = document.getElementById('thread-detail-pool');
+
+  function _syncEmptyState() {
+    document.getElementById('thread-detail-empty').style.display =
+      _openThreads.size === 0 && document.getElementById('nt-form').style.display === 'none' ? '' : 'none';
+  }
+  function _saveOpenThreads() {
+    const domOrder = [..._detail.querySelectorAll('.thread-detail-view')].map(el => el.id.replace('td-view-',''));
+    try { localStorage.setItem('pp-open-threads', JSON.stringify(domOrder)); } catch(e) {}
+  }
+
+  function selectThread(id) {
+    id = String(id);
+    const view    = document.getElementById('td-view-' + id);
+    if (!view) return;
+    const navItem = document.querySelector('.tn-item[data-id="' + id + '"]');
+    if (_openThreads.has(id)) {
+      _openThreads.delete(id);
+      _pool.appendChild(view);
+      if (navItem) navItem.classList.remove('active');
+    } else {
+      _openThreads.add(id);
+      _detail.appendChild(view);
+      if (navItem) navItem.classList.add('active');
+      document.getElementById('nt-form').style.display = 'none';
+    }
+    _syncEmptyState();
+    _saveOpenThreads();
+    _updateGroupStates();
+    _updateSidebar();
+  }
+
+  function openAllThreads() {
+    const allIds = [...document.querySelectorAll('.tn-item[data-id]')].map(el => el.dataset.id);
+    const allOpen = allIds.every(id => _openThreads.has(id));
+    if (allOpen) {
+      allIds.forEach(id => { if (_openThreads.has(id)) selectThread(id); });
+    } else {
+      allIds.forEach(id => { if (!_openThreads.has(id)) selectThread(id); });
+      _sortThreadsByHeight();
+    }
+  }
+
+  function _sortThreadsByHeight() {
+    requestAnimationFrame(() => {
+      const views = [..._detail.querySelectorAll('.thread-detail-view')];
+      if (views.length <= 1) return;
+      views.sort((a, b) => b.offsetHeight - a.offsetHeight);
+      const ntForm = document.getElementById('nt-form');
+      views.forEach(v => _detail.insertBefore(v, ntForm));
+    });
+  }
+
+  /* ── new thread ── */
+  function showNewThread() {
+    const f = document.getElementById('nt-form');
+    f.style.display = '';
+    f.querySelector('input').focus();
+    _syncEmptyState();
+  }
+  function hideNewThread() {
+    document.getElementById('nt-form').style.display = 'none';
+    _syncEmptyState();
+  }
+
+  /* restore open threads in saved order */
+  (() => {
+    try {
+      const ids = JSON.parse(localStorage.getItem('pp-open-threads') || '[]');
+      ids.forEach(id => { if (document.getElementById('td-view-' + id)) selectThread(id); });
+    } catch(e) {}
+  })();
+
+  /* ── add-item panel ── */
+  function toggleAdd(threadId, btn) {
+    const panel = document.getElementById('ap-' + threadId);
+    const isOpen = panel.classList.contains('open');
+    document.querySelectorAll('.tc-add-panel').forEach(p => p.classList.remove('open'));
+    if (!isOpen) {
+      panel.classList.add('open');
+      const inp = panel.querySelector('input[name="description"]');
+      if (inp) inp.focus();
+      const sel = panel.querySelector('select[name="person_id"]');
+      if (sel) _checkEffortVisibility(sel);
+      // Reset effort buttons to Standard
+      panel.querySelectorAll('.effort-pick-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.level === 'standard');
+      });
+      const efHidden = panel.querySelector('input[name="effort"]');
+      if (efHidden) efHidden.value = 'standard';
+      // Reset deadline toggle
+      const dlBtn = panel.querySelector('.deadline-toggle-btn');
+      if (dlBtn) { dlBtn.classList.remove('active'); dlBtn.nextElementSibling.value = '0'; }
+      // Reset due selector to Anytime each time the panel opens
+      const tid = panel.querySelector('[name="thread_id"]')?.value;
+      if (tid) pickDueType(tid, 'ANYTIME', panel.querySelectorAll('.due-type-btn')[1]);
+    }
+  }
+
+  /* ── manage inline edit ── */
+  function startEdit(pfx, id) {
+    ['label','meta','actions'].forEach(p => {
+      const el = document.getElementById(pfx + p + '-' + id);
+      if (el) el.style.display = 'none';
+    });
+    const form = document.getElementById(pfx + 'edit-' + id);
+    form.style.display = 'flex';
+    const inp = form.querySelector('input[name="name"]');
+    if (inp) inp.focus();
+  }
+  function cancelEdit(pfx, id) {
+    ['label','meta','actions'].forEach(p => {
+      const el = document.getElementById(pfx + p + '-' + id);
+      if (el) el.style.display = '';
+    });
+    document.getElementById(pfx + 'edit-' + id).style.display = 'none';
+  }
+
+  /* ── task notes ── */
+  function toggleNotes(id) {
+    document.getElementById('tnotes-' + id).classList.toggle('open');
+  }
+  let _notesTimers = {};
+  function saveNotes(id, value) {
+    clearTimeout(_notesTimers[id]);
+    _notesTimers[id] = setTimeout(() => {
+      fetch('/tasks/' + id + '/notes', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'notes=' + encodeURIComponent(value),
+      });
+      const ind = document.getElementById('tind-' + id);
+      if (ind) ind.classList.toggle('has-notes', value.trim().length > 0);
+    }, 600);
+  }
+
+  /* ── inline task edit ── */
+  function startTaskEdit(id) {
+    const panel = document.getElementById('tk-edit-' + id);
+    if (panel.style.display !== 'none') { cancelTaskEdit(id); return; }
+    panel.style.display = 'block';
+    // init due date state
+    const due = panel.dataset.due || 'ASAP';
+    const btns = panel.querySelectorAll('.due-type-btn');
+    btns.forEach(b => b.classList.remove('active'));
+    const dateInput = document.getElementById('due-edit-date-' + id);
+    dateInput.style.display = 'none';
+    dateInput.required = false;
+    if (due === 'ANYTIME') {
+      btns[1].classList.add('active');
+    } else if (due !== 'ASAP') {
+      btns[2].classList.add('active');
+      dateInput.style.display = '';
+      dateInput.value = due;
+    } else {
+      btns[0].classList.add('active');
+    }
+    // init effort visibility + active button
+    const sel = panel.querySelector('select[name="person_id"]');
+    if (sel) _checkEffortVisibility(sel);
+    const currentEffort = panel.querySelector('input[name="effort"]')?.value || 'standard';
+    panel.querySelectorAll('.effort-pick-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.level === currentEffort);
+    });
+    panel.querySelector('input[name="description"]').focus();
+  }
+  function cancelTaskEdit(id) {
+    document.getElementById('tk-edit-' + id).style.display = 'none';
+  }
+  function pickEditDueType(id, type, btn) {
+    const row = btn.closest('.due-type-row');
+    row.querySelectorAll('.due-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const dateInput = document.getElementById('due-edit-date-' + id);
+    const hidden    = document.getElementById('due-edit-' + id);
+    if (type === 'date') {
+      dateInput.style.display = '';
+      dateInput.required = true;
+      hidden.value = dateInput.value || '';
+    } else {
+      dateInput.style.display = 'none';
+      dateInput.required = false;
+      hidden.value = type;
+    }
+  }
+
+  /* ── update thread counts based on current filter ── */
+  function updateThreadCounts(mode) {
+    document.querySelectorAll('.tn-item[data-id]').forEach(item => {
+      const view = document.getElementById('td-view-' + item.dataset.id);
+      const badge = item.querySelector('.tn-count');
+      if (!view) return;
+      const all  = view.querySelectorAll('.tc-task-wrap').length;
+      const mine = view.querySelectorAll('.tc-task-wrap[data-is-me="true"]').length;
+      const n = mode === 'me' ? mine : all;
+      if (badge) { badge.textContent = n || ''; badge.style.visibility = n ? '' : 'hidden'; }
+      else if (n) {
+        const span = document.createElement('span');
+        span.className = 'tn-count';
+        span.textContent = n;
+        item.appendChild(span);
+      }
+      // also update the open thread detail header count
+      const hdrBadge = view.querySelector('.tdv-header .tc-count');
+      if (hdrBadge) { hdrBadge.textContent = n || ''; hdrBadge.style.visibility = n ? '' : 'hidden'; }
+    });
+  }
+
+  /* ── global home filter ── */
+  function setGlobalFilter(mode) {
+    document.getElementById('gf-all').classList.toggle('active', mode === 'all');
+    document.getElementById('gf-me').classList.toggle('active', mode === 'me');
+    document.getElementById('nav-effort-bar').classList.toggle('visible', mode === 'me');
+    if (mode === 'all') {
+      document.querySelectorAll('.tc-task-wrap, .tc-group').forEach(el => el.style.display = '');
+      document.querySelectorAll('[data-effort-tag]').forEach(el => el.style.display = 'none');
+      setGlobalEffortFilter('all', document.getElementById('ef-all'));
+
+    } else {
+      document.querySelectorAll('[data-effort-tag]').forEach(el => el.style.display = '');
+      document.querySelectorAll('.tc-task-wrap').forEach(el => {
+        el.style.display = (el.dataset.isMe === 'true') ? '' : 'none';
+      });
+      document.querySelectorAll('.tc-group').forEach(g => {
+        g.style.display = g.querySelectorAll('.tc-task-wrap[data-is-me="true"]').length ? '' : 'none';
+      });
+    }
+    updateThreadCounts(mode);
+    _updateSidebar();
+    try { localStorage.setItem('pp-gf', mode); } catch(e) {}
+  }
+
+  function setGlobalEffortFilter(level, btn) {
+    if (btn) {
+      document.querySelectorAll('#nav-effort-bar .nav-effort-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    document.querySelectorAll('.tc-task-wrap').forEach(wrap => {
+      if (level === 'all') { wrap.style.display = wrap.dataset.isMe === 'true' || document.getElementById('gf-all').classList.contains('active') ? '' : 'none'; return; }
+      const effort = (wrap.querySelector('.tc-effort') || {}).dataset?.effort;
+      const meVisible = wrap.dataset.isMe === 'true';
+      wrap.style.display = (meVisible && effort === level) ? '' : 'none';
+    });
+    document.querySelectorAll('.tc-group').forEach(g => {
+      g.style.display = [...g.querySelectorAll('.tc-task-wrap')].some(w => w.style.display !== 'none') ? '' : 'none';
+    });
+    _updateSidebar();
+  }
+  // Effort tags hidden by default; shown only in Me mode
+  document.querySelectorAll('[data-effort-tag]').forEach(el => el.style.display = 'none');
+  const _storedGf = (() => { try { return localStorage.getItem('pp-gf'); } catch(e) { return null; } })();
+  if (_storedGf) setGlobalFilter(_storedGf);
+
+  /* ── sidebar: filter by selected threads + global me/all ── */
+  function _updateSidebar() {
+    const isMe = document.getElementById('gf-me').classList.contains('active');
+    const activeEffortBtn = document.querySelector('#nav-effort-bar .nav-effort-btn.active');
+    const effortLevel = (isMe && activeEffortBtn && activeEffortBtn.id !== 'ef-all')
+      ? activeEffortBtn.id.replace('ef-', '')
+      : 'all';
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.querySelectorAll('.sb-item').forEach(el => {
+      const meOk = !isMe || el.dataset.isMe === 'true';
+      const effortOk = effortLevel === 'all' || el.dataset.effort === effortLevel;
+      const visible = _sidebarDeadlineOnly
+        ? el.dataset.isDeadline === '1' && meOk && effortOk
+        : _openThreads.has(el.dataset.threadId) && meOk && effortOk;
+      el.style.display = visible ? '' : 'none';
+    });
+    sidebar.querySelectorAll('.sb-group').forEach(g => {
+      g.style.display = [...g.querySelectorAll('.sb-item')].some(w => w.style.display !== 'none') ? '' : 'none';
+    });
+    ['sidebar-upper', 'sidebar-lower'].forEach(cls => {
+      const sec = sidebar.querySelector('.' + cls);
+      if (sec) sec.style.display = [...sec.querySelectorAll('.sb-group')].some(g => g.style.display !== 'none') ? '' : 'none';
+    });
+  }
+
+  /* ── collapse anytime section by default ── */
+  (() => {
+    const lower = document.querySelector('.sidebar-lower');
+    if (!lower) return;
+    const group = lower.querySelector('.sb-group');
+    if (!group) return;
+    group.classList.add('collapsed');
+    const icon = group.querySelector('.sb-collapse-icon');
+    if (icon) icon.textContent = '▸';
+  })();
+
+  /* ── anytime resize handle ── */
+  (() => {
+    const handle = document.getElementById('sb-resize-handle');
+    const sidebar = document.querySelector('.sidebar');
+    const lower  = document.querySelector('.sidebar-lower');
+    if (!handle || !sidebar || !lower) return;
+
+    const MIN_LOWER = 48;
+    const MIN_UPPER = 60;
+
+    function applyHeight(px) {
+      lower.style.height = px + 'px';
+      lower.style.maxHeight = '';
+    }
+
+    // Restore saved height
+    const saved = (() => { try { return localStorage.getItem('pp-anytime-h'); } catch(e) { return null; } })();
+    if (saved && lower.classList.contains('expanded')) applyHeight(+saved);
+
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const sidebarRect = sidebar.getBoundingClientRect();
+      let dragging = false;
+
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'ns-resize';
+      handle.classList.add('dragging');
+
+      function onMove(e) {
+        dragging = true;
+        const newLowerH = sidebarRect.bottom - e.clientY - handle.offsetHeight;
+        const upperH   = sidebarRect.height  - newLowerH - handle.offsetHeight;
+        if (newLowerH < MIN_LOWER || upperH < MIN_UPPER) return;
+        lower.classList.add('expanded');
+        applyHeight(newLowerH);
+      }
+
+      function onUp() {
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        handle.classList.remove('dragging');
+        if (dragging) {
+          try { localStorage.setItem('pp-anytime-h', lower.getBoundingClientRect().height); } catch(e) {}
+          // Swallow the click that fires after mouseup to prevent triggering toggleSbGroup
+          window.addEventListener('click', e => e.stopPropagation(), { capture: true, once: true });
+        }
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  })();
+
+  /* ── collapsible sidebar sections ── */
+  function toggleSbGroup(label) {
+    const group = label.closest('.sb-group');
+    const collapsed = group.classList.toggle('collapsed');
+    label.querySelector('.sb-collapse-icon').textContent = collapsed ? '▸' : '▾';
+    const lower = group.closest('.sidebar-lower');
+    if (lower) {
+      lower.classList.toggle('expanded', !collapsed);
+      if (!collapsed) {
+        // Re-apply saved height when expanding
+        const saved = (() => { try { return localStorage.getItem('pp-anytime-h'); } catch(e) { return null; } })();
+        if (saved) { lower.style.height = (+saved) + 'px'; lower.style.maxHeight = ''; }
+        else { lower.style.height = ''; lower.style.maxHeight = '33%'; }
+      }
+    }
+  }
+
+  /* ── manage history ── */
+  function toggleHistory(threadId, btn) {
+    const panel = document.getElementById('thist-' + threadId);
+    const open = panel.classList.toggle('open');
+    btn.textContent = open ? 'Hide' : 'History';
+  }
+  function confirmDel(name, open, kind) {
+    if (open > 0) return false;
+    return confirm('Remove ' + kind + ' "' + name + '"?');
+  }
+
+  /* ── emoji picker ── */
+  function toggleEmojiPicker(id) {
+    const grid = document.getElementById('ep-grid-' + id);
+    const isOpen = grid.classList.contains('open');
+    document.querySelectorAll('.ep-grid.open').forEach(g => g.classList.remove('open'));
+    if (!isOpen) grid.classList.add('open');
+  }
+  function pickEmoji(id, emoji) {
+    document.getElementById('ep-val-' + id).value = emoji;
+    document.getElementById('ep-btn-' + id).textContent = emoji;
+    document.getElementById('ep-grid-' + id).classList.remove('open');
+  }
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.ep-wrap'))
+      document.querySelectorAll('.ep-grid.open').forEach(g => g.classList.remove('open'));
+  });
+
+  /* ── effort fields: show when Me is selected ── */
+  const _meId = {{ me_id | tojson }};
+  function _checkEffortVisibility(sel) {
+    const form = sel.closest('form');
+    const isMe = _meId && String(sel.value) === String(_meId);
+    const efPanel = form.querySelector('.effort-fields');
+    if (!efPanel) return;
+    efPanel.style.display = isMe ? 'flex' : 'none';
+  }
+
+  function pickEffort(btn) {
+    const row = btn.closest('.effort-btn-row');
+    row.querySelectorAll('.effort-pick-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const hidden = btn.closest('.effort-fields').querySelector('input[name="effort"]');
+    if (hidden) hidden.value = btn.dataset.level;
+  }
+
+  function toggleDeadline(btn) {
+    const active = btn.classList.toggle('active');
+    const hidden = btn.nextElementSibling;
+    hidden.value = active ? '1' : '0';
+  }
+
+  function toggleSidebarDeadlines(btn) {
+    _sidebarDeadlineOnly = !_sidebarDeadlineOnly;
+    btn.classList.toggle('active', _sidebarDeadlineOnly);
+    document.querySelector('.sidebar').classList.toggle('deadline-mode', _sidebarDeadlineOnly);
+    document.getElementById('sidebar-title-text').textContent = _sidebarDeadlineOnly ? 'Deadlines' : 'Due';
+    _updateSidebar();
+  }
+
+  function pickDueType(tid, type, btn) {
+    const row = btn.closest('.due-type-row');
+    row.querySelectorAll('.due-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const dateInput = document.getElementById('me-date-' + tid);
+    const hidden    = document.getElementById('due-hidden-' + tid);
+    if (type === 'date') {
+      dateInput.style.display = '';
+      dateInput.required = true;
+      hidden.value = dateInput.value || '';
+    } else {
+      dateInput.style.display = 'none';
+      dateInput.required = false;
+      hidden.value = type;
+    }
+  }
+
+function handlePersonSel(sel) {
+    _checkEffortVisibility(sel);
+    if (sel.value !== '__new__') return;
+    sel.value = '';
+    const wrap = sel.nextElementSibling;
+    wrap.classList.add('open');
+    wrap.querySelector('.qap-input').focus();
+  }
+  async function quickAddPerson(input) {
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    input.disabled = true;
+    const wrap = input.closest('.qap-wrap');
+    const sel  = wrap.previousElementSibling;
+    try {
+      const res = await fetch('/people/quick', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'name=' + encodeURIComponent(name),
+      });
+      const p = await res.json();
+      const label = p.emoji + ' ' + p.name;
+      document.querySelectorAll('select[name="person_id"]').forEach(s => {
+        const addOpt = s.querySelector('option[value="__new__"]');
+        s.insertBefore(new Option(label, p.id), addOpt);
+      });
+      sel.value = p.id;
+    } finally {
+      wrap.classList.remove('open');
+      input.value = ''; input.disabled = false;
+    }
+  }
+  function cancelQap(input) {
+    input.value = '';
+    input.closest('.qap-wrap').classList.remove('open');
+  }
+
+  /* ── groups ── */
+  function toggleGroup(id) {
+    const item = document.querySelector('.tn-group-item[data-group-id="' + id + '"]');
+    const threadIds = (item.dataset.threadIds || '').split(',').filter(Boolean);
+    const allOpen = threadIds.length > 0 && threadIds.every(tid => _openThreads.has(tid));
+    if (allOpen) {
+      threadIds.forEach(tid => selectThread(tid));
+    } else {
+      [..._openThreads].forEach(tid => selectThread(tid));
+      threadIds.forEach(tid => selectThread(tid));
+      _sortThreadsByHeight();
+    }
+  }
+
+  function _updateGroupStates() {
+    document.querySelectorAll('.tn-group-item').forEach(item => {
+      const ids = (item.dataset.threadIds || '').split(',').filter(Boolean);
+      item.classList.toggle('active', ids.length > 0 && ids.every(tid => _openThreads.has(tid)));
+    });
+  }
+
+  function toggleGroupPanel(groupId, btn) {
+    const panel = document.getElementById('gpanel-' + groupId);
+    const opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    btn.textContent = opening ? 'Done' : 'Threads';
+  }
+
+  async function toggleGroupThread(groupId, threadId, add, chipEl) {
+    if (chipEl) chipEl.classList.toggle('gthread-chip--on', add);
+    const url = add
+      ? '/groups/' + groupId + '/threads/add'
+      : '/groups/' + groupId + '/threads/' + threadId + '/remove';
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: add ? 'thread_id=' + threadId : '',
+    });
+    const navItem = document.querySelector('.tn-group-item[data-group-id="' + groupId + '"]');
+    if (navItem) {
+      const ids = new Set((navItem.dataset.threadIds || '').split(',').filter(Boolean));
+      add ? ids.add(String(threadId)) : ids.delete(String(threadId));
+      navItem.dataset.threadIds = [...ids].join(',');
+      const countEl = navItem.querySelector('.tn-count');
+      if (countEl) countEl.textContent = ids.size || '';
+      const meta = document.getElementById('gmeta-' + groupId);
+      if (meta) meta.textContent = ids.size + ' thread' + (ids.size !== 1 ? 's' : '');
+    }
+    _updateGroupStates();
+  }
+
+  /* ── drag-and-drop: open thread cards ── */
+  Sortable.create(_detail, {
+    draggable:  '.thread-detail-view',
+    handle:     '.tdv-drag',
+    animation:  150,
+    onEnd() { _saveOpenThreads(); },
+  });
+
+  /* ── create group from nav ── */
+  function showNavGroupForm() {
+    document.getElementById('nav-group-create').style.display = '';
+    document.getElementById('nav-group-input').focus();
+  }
+  function hideNavGroupForm() {
+    document.getElementById('nav-group-create').style.display = 'none';
+    document.getElementById('nav-group-input').value = '';
+  }
+
+  /* ── drag-and-drop: thread nav ── */
+  Sortable.create(document.getElementById('tn-list'), {
+    handle: '.tn-drag', animation: 150,
+    onEnd() {
+      const ids = [...document.querySelectorAll('#tn-list .tn-item[data-id]')].map(el => el.dataset.id);
+      fetch('/threads/reorder', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+    },
+  });
+
+  /* ── drag-and-drop: tasks within groups ── */
+  document.querySelectorAll('.tc-group').forEach(group => {
+    Sortable.create(group, {
+      draggable: '.tc-task-wrap', handle: '.tc-drag-handle', animation: 120,
+      onEnd() {
+        const view = group.closest('.thread-detail-view');
+        const ids  = [...view.querySelectorAll('.tc-task-wrap[data-id]')].map(el => el.dataset.id);
+        fetch('/tasks/reorder', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+      },
+    });
+  });
+</script>
+</body>
+</html>
